@@ -40,22 +40,14 @@ def extract_frames(video_path, output_folder="frames", frame_rate=1):
 class ViolationClassifier:
     
     def __init__(self, clip_model, processor, device, violation_labels):
-        """
-        Args:
-            clip_model: Pretrained CLIP model
-            processor: CLIP processor (tokenizer + image preprocessor)
-            device: Torch device ("cpu" or "cuda")
-            violation_labels (list[str]): List of violation categories
-        """
+       
         self.clip_model = clip_model
         self.processor = processor
         self.device = device
         self.violation_labels = violation_labels
 
     def get_image_features(self, image_paths):
-        """
-        Compute CLIP image embeddings for a list of image paths.
-        """
+        
         images = [Image.open(p).convert("RGB") for p in image_paths]
         inputs = self.processor(images=images, return_tensors="pt").to(self.device)
         with torch.no_grad():
@@ -63,18 +55,7 @@ class ViolationClassifier:
         return image_features
     
     def classify_violations(self, image_features, top_k=None, use_max=True):
-        """  
-        Classify images into violation categories using CLIP in zero-shot mode.
-
-        Args:
-            image_features (Tensor): Precomputed CLIP image features, shape [N, D]
-            top_k (int, optional): Return only the top K most significant labels
-            use_max (bool): If True, strongest match across images.
-                            If False, average across images.
-
-        Returns:
-            list of tuples: [(label, score), ...] sorted high → low
-        """
+        
         scores_dict = {}
 
         for label in self.violation_labels:
