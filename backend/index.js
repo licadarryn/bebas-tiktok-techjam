@@ -52,7 +52,7 @@ function appendRow(url, item) {
     item?.videoMeta?.duration ?? 0,
   ].join(",");
   fs.appendFileSync(CSV_FILE, row + "\n", "utf8");
-  console.log(`✅ Metadata saved for ${url}`);
+  console.log(`Metadata saved for ${url}`);
 }
 
 // Main function
@@ -92,7 +92,7 @@ async function getMetadata(url) {
       duration: item?.videoMeta?.duration ?? 0,
     }));
   } catch (err) {
-    console.error("❌ Metadata error:", err.message);
+    console.error("Metadata error:", err.message);
     return { error: err.message };
   }
 }
