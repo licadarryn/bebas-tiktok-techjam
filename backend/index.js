@@ -1,14 +1,32 @@
-// index.js
 const { ApifyClient } = require("apify-client");
-const fs = require("fs");
 const axios = require("axios");
-const readline = require("readline");
+const fs = require("fs");
+const path = require("path");
 
 const client = new ApifyClient({
-  token: "", //insert your api key here
+  token: "", //your api key
 });
 
-async function expand(shortUrl) {
+// Fixed CSV file
+const CSV_FILE = path.join(__dirname, "result.csv");
+
+// Headers for CSV
+const HEADERS = [
+  "url",
+  "fans",
+  "shareCount",
+  "diggCount",
+  "playCount",
+  "collectCount",
+  "commentCount",
+  "duration",
+];
+
+// Initialize CSV file (overwrite if exists)
+fs.writeFileSync(CSV_FILE, HEADERS.join(",") + "\n", "utf8");
+
+// Expand TikTok short URLs
+async function expandUrl(shortUrl) {
   try {
     const res = await axios.get(shortUrl, {
       maxRedirects: 0,
@@ -16,18 +34,31 @@ async function expand(shortUrl) {
       headers: { "User-Agent": "Mozilla/5.0" },
     });
     return res.headers.location || shortUrl;
-  } catch (err) {
-    console.error("URL expand error:", err.message);
+  } catch {
     return shortUrl;
   }
 }
 
-async function runScraper(url) {
-  try {
-    fs.writeFileSync("input.json", JSON.stringify({ url }, null, 2));
-    console.log("✅ Saved input.json");
+// Append a row to CSV
+function appendRow(url, item) {
+  const row = [
+    `"${url}"`,
+    item?.authorMeta?.fans ?? 0,      // <-- updated here
+    item?.shareCount ?? 0,
+    item?.diggCount ?? 0,
+    item?.playCount ?? 0,
+    item?.collectCount ?? 0,
+    item?.commentCount ?? 0,
+    item?.videoMeta?.duration ?? 0,
+  ].join(",");
+  fs.appendFileSync(CSV_FILE, row + "\n", "utf8");
+  console.log(`✅ Metadata saved for ${url}`);
+}
 
-    const expanded = await expand(url);
+// Main function
+async function getMetadata(url) {
+  try {
+    const expanded = await expandUrl(url);
     console.log("Using expanded URL:", expanded);
 
     const input = {
@@ -41,26 +72,35 @@ async function runScraper(url) {
     };
 
     const run = await client.actor("clockworks/tiktok-scraper").call(input);
-    console.log("Run started:", run.id);
+    const { items } = await client.dataset(run.defaultDatasetId).listItems({ clean: true });
 
-    const { items } = await client
-      .dataset(run.defaultDatasetId)
-      .listItems({ clean: true });
+    if (!items || items.length === 0) {
+      console.log("No metadata found for this video.");
+      return [];
+    }
 
-    console.log("Items count:", items.length);
-    fs.writeFileSync("result.json", JSON.stringify(items, null, 2));
-    console.log("✅ Saved results to result.json");
+    // Append rows to CSV
+    items.forEach((item) => appendRow(expanded, item));
+
+    return items.map((item) => ({
+      fans: item?.authorMeta?.fans ?? 0,    // <-- updated here
+      shareCount: item?.shareCount ?? 0,
+      diggCount: item?.diggCount ?? 0,
+      playCount: item?.playCount ?? 0,
+      collectCount: item?.collectCount ?? 0,
+      commentCount: item?.commentCount ?? 0,
+      duration: item?.videoMeta?.duration ?? 0,
+    }));
   } catch (err) {
-    console.error("Error:", err.response?.data || err.message);
+    console.error("❌ Metadata error:", err.message);
+    return { error: err.message };
   }
 }
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+// Test
+if (require.main === module) {
+  const testUrl = "https://www.tiktok.com/@username/video/1234567890"; // replace with a real URL
+  (async () => await getMetadata(testUrl))();
+}
 
-rl.question("Enter TikTok URL: ", async (url) => {
-  await runScraper(url);
-  rl.close();
-});
+module.exports = getMetadata;
