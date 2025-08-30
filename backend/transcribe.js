@@ -65,7 +65,7 @@ function appendTranscript(url, transcript) {
   }
 
   fs.writeFileSync(CSV_FILE, lines.join("\n"), "utf8");
-  console.log(`✅ Transcript updated for ${url}`);
+  console.log(`Transcript updated for ${url}`);
 }
 
 // Main transcript function
@@ -74,7 +74,7 @@ async function getTranscript(url) {
 
   try {
     const expandedUrl = await expandUrl(url);
-    console.log("📌 Downloading TikTok video from:", expandedUrl);
+    console.log("Downloading TikTok video from:", expandedUrl);
 
     if (!fs.existsSync(YTDLP_PATH)) throw new Error(`yt-dlp not found at path: ${YTDLP_PATH}`);
 
@@ -140,7 +140,7 @@ async function getTranscript(url) {
 
     return transcriptText;
   } catch (err) {
-    console.error("❌ Transcript error:", err.message);
+    console.error("Transcript error:", err.message);
     appendTranscript(url, `ERROR: ${err.message}`);
     return `ERROR: ${err.message}`;
   }
